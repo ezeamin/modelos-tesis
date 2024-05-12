@@ -8,7 +8,7 @@ import seaborn as sns
 import numpy as np
 from joblib import dump, load
 
-from prepare_data import prepareData
+from prepare_data import prepareData,prepareTestData
 
 # Prepare data
 loaded_dataset = prepareData()
@@ -44,7 +44,7 @@ for model in models:
     except:
         print(f'No model found for {type(model).__name__}')
         model.fit(X_train, y_train)
-        
+            
     pred = model.predict(X_test)
     
     # Save the training to avoid refit
@@ -78,8 +78,11 @@ plt.legend(title="Evaluation")
 plt.show() 
     
 # Predict new data
-new_data = ["Congratulations! you have won a brand new car. Claim it now at https://honda.xyz/login."]
-print(f'\nTest data: {new_data[0]}\n')
+emailBody = "Congratulations! you have won a brand new car. Claim it now at https://honda.xyz/login."
+print(f'\nTest data: {emailBody}\n')
+
+new_processed_data = [prepareTestData(emailBody)]
+print(f'Processed test data: {new_processed_data[0]}\n')
     
 for model in models:
     convert_feature = TfidfVectorizer()
@@ -87,13 +90,14 @@ for model in models:
     X = convert_feature.fit_transform(loaded_dataset['Email Text'])
     Y = loaded_dataset['Email Type']
     
+    # TODO: This is loading a falsy model, fix it
     # Try to load trained model
-    try:
-        model = load(f'dataset_2/models/{type(model).__name__}.joblib')
-    except:
-        model.fit(X, Y)
+    # try:
+    #     model = load(f'dataset_2/models/{type(model).__name__}.joblib')
+    # except:
+    model.fit(X, Y)
 
-    pred = model.predict(convert_feature.transform(new_data))
+    pred = model.predict(convert_feature.transform(new_processed_data))
 
     if pred[0] == -1:
        print(f'Predicted by {type(model).__name__}: Phishing text')
