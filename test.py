@@ -1,47 +1,52 @@
-import pandas as pd
-from data import preprocess_text 
+from sklearn.naive_bayes import ComplementNB
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
 from joblib import load
 
-# Load model from file
-model = load('model.joblib')
+from prepare_data import prepareTestData,prepareData,prepareTestRawData
 
-# Predict over 1 email stored as csv in example.csv and print output
-example_sender = "Gaddafi Aisha <gaddafiaisha6643@gmail.com>"
-example_subject = "HELLO DEAR"
-example_body = """Dear Friend,
+test_data = prepareTestData()
+test_data['Email Type'] = test_data['Email Type'].replace({'Safe Email': 1, 'Phishing Email': -1})
 
-How are you doing today, I came across your e-mail contact prior a private search while in need of your assistance.
+# Convert feature with TF-ID
+# convert_feature = TfidfVectorizer()
+convert_feature = load('tfidf/tfidf_vectorizer.joblib')
 
-Please May i use this medium to open a mutual communication with you, and seeking your acceptance towards investing in your country under your management as my partner.
+# training_data = prepareData()
+# training_data['Email Type'] = training_data['Email Type'].replace({'Safe Email': 1, 'Phishing Email': -1})
 
-My name is Aisha Gaddafi am presently living in Oman as a refugee, i am a Widow and single Mother with One Daughter, the only biological Daughter of late Libyan President (Late Colonel Muammar Gaddafi) i am presently  under political asylum protection by the Omani Government in oman.
+# model = ComplementNB()
+model = load('models/ComplementNB.joblib')
 
-I have funds worth "Twentyseven Million Five Hundred Thousand United state dollar" ($27.500.000.00 USD) which i want to entrust on you for investment project in your country and  i shall compensate you 50% of the total sum after the funds have been transfered into your account in your country.
-If you are willing to handle this project on my behalf, kindly reply urgent to enable me provide you more details to start the transfer process.
+# training_X = convert_feature.fit_transform(training_data['Email Text'])
+# training_Y = training_data['Email Type']
+# model.fit(training_X, training_Y)
 
-I shall appreciate your urgent response through my private email address below:
-(aisha.gaddaffi28@mail.com)
+X = convert_feature.transform(test_data['Email Text'])
+Y = test_data['Email Type']
 
-Thanks
-Yours Truly
-Aisha Gaddaf"""
+print(Y)
 
-# Preprocess the example email
-example_processed_body = preprocess_text(example_body)
-example_processed_subject = preprocess_text(example_subject)
-example_processed_sender = preprocess_text(example_sender)
+pred = model.predict(X)
 
-# Create a DataFrame from the example email
-example_email = pd.DataFrame({
-    'processed_body': [example_processed_body],
-    'sender': [example_processed_sender],
-    'subject': [example_processed_subject],
-    'urls': [1]
-})
+matrix = confusion_matrix(Y, pred)
+sns.heatmap(matrix, annot=True, cmap='Blues', fmt='g', xticklabels=['Safe Email', 'Phishing Email'], yticklabels=['Safe Email', 'Phishing Email'])
+plt.xlabel('Predicted labels')
+plt.title('ComplementNB')
+plt.show()
 
-# Predict the label of the example email
-example_prediction = model.predict(example_email)
+# ------------------------------------------------------------
 
-# Print the prediction
-print("Prediction for the example email:")
-print("PHISHING" if example_prediction[0] == 1 else "Not Phishing")
+emailBody = "Congratulations! you have won a brand new car. Claim it now at https://honda.xyz/login."
+print(f'\nTest data: {emailBody}\n')
+
+new_processed_data = [prepareTestRawData(emailBody)]
+print(f'Processed test data: {new_processed_data[0]}\n')
+    
+pred = model.predict(convert_feature.transform(new_processed_data))
+if pred[0] == -1:
+    print(f'Predicted: Phishing text')
+else:
+    print(f'Predicted: Safe text')

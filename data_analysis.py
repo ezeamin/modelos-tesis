@@ -1,78 +1,69 @@
 import pandas as pd
 from wordcloud import WordCloud
-from nltk.corpus import stopwords
 import matplotlib.pyplot as plt
-import re
+from prepare_data import prepareData
 
 # Read the CSV file
-df = pd.read_csv('datasets/Phishing_Email.csv')
+df = prepareData()
 
-# Log the first row's body with label 1
-# print(df.loc[df['label'] == 1, 'body'].iloc[7])
-
-print(df.head())
-
-# Remove duplicates
-df = df.drop_duplicates()
-
-# From body element, retrieve only text and ignore any mail structure (html for example, but remove the tags and any special symbol)
-df['body'] = df['body'].str.replace(r'<[^>]*>', '').apply(lambda x: re.sub(r'[^\w\s]', '', x)).str.lower()
-
-# Remove stopwords and numbers
-stop_words = stopwords.words('english')
-df['body'] = df['body'].apply(lambda x: ' '.join([word for word in x.split() if word not in stop_words and not word.isdigit()]))
-
-# Plot the distribution of words in the 'body' column
-# Calculate the frequency of each word in the 'body' column
-word_frequency = df['body'].str.split().explode().value_counts().head(10)
-
-# Plot the frequency of words
-word_frequency.plot(kind='bar')
-plt.xlabel('Word')
-plt.ylabel('Frequency')
-plt.title('Frequency of Top 10 Words in Body')
-plt.show()
-
+# Show dataset info
+print(df.info())
+    
 # Plot the frequency of words based on the 'label' column
-spam_word_frequency = df[df['label'] == 1]['body'].str.split().explode().value_counts().head(10)
-non_spam_word_frequency = df[df['label'] == 0]['body'].str.split().explode().value_counts().head(10)
+spam_word_frequency = df[df['Email Type'] == "Phishing Email"]['Email Text'].str.split().explode().value_counts().head(10)
+non_spam_word_frequency = df[df['Email Type'] == "Safe Email"]['Email Text'].str.split().explode().value_counts().head(10)
 
 plt.subplot(1, 2, 1)
 spam_word_frequency.plot(kind='bar')
 plt.xlabel('Word')
 plt.ylabel('Frequency')
-plt.title('Frequency of Top 10 Words in Spam Mails')
+plt.title('Frequency of Top 10 Words in Phishing Mails')
 
 plt.subplot(1, 2, 2)
 non_spam_word_frequency.plot(kind='bar')
 plt.xlabel('Word')
 plt.ylabel('Frequency')
-plt.title('Frequency of Top 10 Words in Non-Spam Mails')
+plt.title('Frequency of Top 10 Words in Non-Phishing Mails')
 
 plt.tight_layout()
 plt.show()
 
-# Plot the distribution of information in the 'label' column
-df['label'].value_counts().plot(kind='bar')
-plt.xlabel('Label')
+# Plot the distribution of information in the 'label' column in pie chart
+df['Email Type'].value_counts().plot(kind='pie', autopct='%1.1f%%')
+plt.title('Distribution of Email Types')
+plt.show()
+
+# Create a chart that correlates the frequency of "urgent, information, free" etc keywords with email type
+# Create a list of words to search for in the email text
+words = ['urgent', 'information', 'free', 'click', 'account', 'password', 'bank', 'money', 'offer', 'transaction']
+word_counts = {word: [df[(df['Email Type'] == "Phishing Email") & (df['Email Text'].str.contains(word))]['Email Text'].count(), 
+                      df[(df['Email Type'] == "Safe Email") & (df['Email Text'].str.contains(word))]['Email Text'].count()] 
+               for word in words}
+
+# Create a DataFrame from the word_counts dictionary
+word_counts_df = pd.DataFrame(word_counts, index=['Phishing Email', 'Safe Email'])
+
+# Plot the word counts
+word_counts_df.plot(kind='bar')
+plt.xlabel('Email Type')
 plt.ylabel('Count')
-plt.title('Distribution of Labels')
-plt.xticks([0, 1], ['Not Phishing', 'Phishing'], rotation=0)  # Modify the x-axis labels
+plt.xticks(rotation=0)
+plt.title('Frequency of Words in Phishing and Non-Phishing Emails')
 plt.show()
 
 # Set the background color to white
-wordcloud = WordCloud(background_color='white')
+wordcloud = WordCloud(width=800, height=800, background_color='white', colormap='hot')
 
 # Create a word cloud for spam mails
-spam_wordcloud = wordcloud.generate(' '.join(df[df['label'] == 1]['body']))
+spam_wordcloud = wordcloud.generate(' '.join(df[df['Email Type'] == "Phishing Email"]['Email Text']))
 plt.imshow(spam_wordcloud, interpolation='bilinear')
 plt.axis('off')
-plt.title('Word Cloud for Spam Mails')
+plt.title('Word Cloud for Phishing Mails')
 plt.show()
 
 # Create a word cloud for non-spam mails
-non_spam_wordcloud = wordcloud.generate(' '.join(df[df['label'] == 0]['body']))
+non_spam_wordcloud = wordcloud.generate(' '.join(df[df['Email Type'] == "Safe Email"]['Email Text']))
 plt.imshow(non_spam_wordcloud, interpolation='bilinear')
 plt.axis('off')
-plt.title('Word Cloud for Non-Spam Mails')
+plt.title('Word Cloud for Non-Phishing Mails')
 plt.show()
